@@ -19,6 +19,7 @@ public class MyImage extends ImageView {
     float touchX, touchY;
     private Path path=new Path();
     private Paint paint= new Paint();
+    private Paint textpaint= new Paint();
 
     public MyImage(Context context) {
         super(context);
@@ -41,12 +42,16 @@ public class MyImage extends ImageView {
         paint.setStrokeWidth(5);
         paint.setAlpha(150);
         paint.setPathEffect(new DashPathEffect(new float[] {10,20}, 0));
+
+        textpaint.setColor(Color.WHITE);
+        textpaint.setTextSize(20);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.drawLine(touchX,0,touchX,canvas.getHeight(),paint);
+
     }
 
     @Override

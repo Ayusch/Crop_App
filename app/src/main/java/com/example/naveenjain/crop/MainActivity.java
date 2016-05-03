@@ -1,6 +1,7 @@
 package com.example.naveenjain.crop;
 
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -26,6 +27,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                 Intent.ACTION_PICK,
                 android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
 
-        startActivityForResult(i, RESULT_LOAD_IMAGE);
+                startActivityForResult(i, RESULT_LOAD_IMAGE);
     }
 
     public void cameraButtonClicked(View v){
@@ -90,64 +92,23 @@ public class MainActivity extends AppCompatActivity {
                 bmp = (Bitmap)extras.get("data");
             }
         }
-        Intent i = new Intent();
-        i.setClass(this,Crop.class);
-        i.putExtra("bitmap",bmp);
-        startActivity(i);
+        Log.i(LOG_TAG,"This is the bitmap in mainActivity :"+bmp);
+
+           // bmp = scaleDownBitmap(bmp,150,this);
+
+        ByteArrayOutputStream ostream = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.PNG,100,ostream);
+        byte[] bytes = ostream.toByteArray();
 
 
-       /* Bitmap bmp = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
-        if(resultCode==RESULT_OK){
-         if(requestCode==RESULT_LOAD_IMAGE){
-             if (data.getData()==null){
-                 bmp = (Bitmap)data.getExtras().get("data");
-             }else{
-                 try {
-                     bmp = MediaStore.Images.Media.getBitmap(this.getContentResolver(),data.getData());
-                 } catch (IOException e) {
-                     e.printStackTrace();
-                 }
-             }
-         }else if(requestCode==REQUEST_CAMERA_CAPTURE){
-             Bundle extras = data.getExtras();
-             bmp = (Bitmap)extras.get("data");
-         }
-        }
-        imageView.setImageBitmap(bmp);
-*/
+            Intent i = new Intent(MainActivity.this,Crop.class);
+
+            i.putExtra("bitmap",bytes);
+            startActivity(i);
 
 
-/*        buttonsLayout.removeView(loadButton);
-        buttonsLayout.removeView(cameraButton);*/
-/*
-        Button cropButton = new Button(this);
-        Button backButton = new Button(this);
-
-
-
-        RelativeLayout.LayoutParams lp_cropbtn = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        lp_cropbtn.addRule(RelativeLayout.ALIGN_LEFT);
-        cropButton.setText("CROP");
-        cropButton.setBackgroundColor(Color.RED);
-
-        RelativeLayout.LayoutParams lp_backbtn = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-        lp_backbtn.addRule(RelativeLayout.END_OF,cropButton.getId());
-        backButton.setText("BACK");
-        backButton.setBackgroundColor(Color.RED);
-
-        buttonsLayout.addView(backButton,lp_backbtn);
-        buttonsLayout.addView(cropButton, lp_cropbtn);*/
     }
 
-    public void afterImageSliceClick(MyImage imageView){
-        ImageView leftImage = null,rightImage;
-        Bitmap left = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-        Bitmap leftBitmap = Bitmap.createBitmap(left,0,0, (int) imageView.touchX,imageView.getHeight());
 
-        //Bitmap right = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
-        //Bitmap rightBitmap = Bitmap.createBitmap(right,,0, (int) imageView.touchX,imageView.getHeight());
-        leftImage.setImageBitmap(leftBitmap);
-        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-       // mainLayout.addView(leftImage,layoutParams);
-    }
+
 }
