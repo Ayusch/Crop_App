@@ -10,17 +10,25 @@
     tools:context="com.example.naveenjain.crop.Crop"
     tools:showIn="@layout/activity_crop"
 
-    android:background="#40271e">
+    android:background="#ea9f4f">
 
     <com.example.naveenjain.crop.MyImage
-        android:layout_width="300dp"
+        android:layout_width="match_parent"
         android:layout_height="300dp"
+        android:layout_marginTop="20dp"
         android:id="@+id/custom_image_view"
         android:layout_centerHorizontal="true"
-
         />
 
-    <Button
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:weightSum="2"
+        android:id="@+id/crop_button_layout"
+        >
+
+        <Button
         style="?android:attr/buttonStyleSmall"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,16 +39,8 @@
         android:layout_marginBottom="0dp"
         android:background="#f93f40"
         android:onClick="onCropClicked"
-        />
+        android:layout_gravity="bottom" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:text="Coordinates"
-        android:id="@+id/coordinates"
-        android:layout_below="@+id/custom_image_view"
-        android:layout_alignStart="@+id/custom_image_view"
-        android:layout_marginTop="55dp" />
+    </LinearLayout>
 
 </RelativeLayout>

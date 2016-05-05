@@ -94,19 +94,29 @@ public class MainActivity extends AppCompatActivity {
         }
         Log.i(LOG_TAG,"This is the bitmap in mainActivity :"+bmp);
 
-           // bmp = scaleDownBitmap(bmp,150,this);
+            bmp = scaleDownBitmap(bmp,150,this);
 
-        ByteArrayOutputStream ostream = new ByteArrayOutputStream();
+/*        ByteArrayOutputStream ostream = new ByteArrayOutputStream();
         bmp.compress(Bitmap.CompressFormat.PNG,100,ostream);
-        byte[] bytes = ostream.toByteArray();
+        byte[] bytes = ostream.toByteArray();*/
 
 
             Intent i = new Intent(MainActivity.this,Crop.class);
 
-            i.putExtra("bitmap",bytes);
+            i.putExtra("bitmap",bmp);
             startActivity(i);
 
 
+    }
+
+    public static Bitmap scaleDownBitmap(Bitmap photo,int newHeight,Context context){
+        final float densityMultiplier = context.getResources().getDisplayMetrics().density;
+
+        int h = (int)(newHeight*densityMultiplier);
+        int w = (int)(h*photo.getWidth()/((double)photo.getHeight()));
+
+        photo = Bitmap.createScaledBitmap(photo,w,h,true);
+        return photo;
     }
 
 
