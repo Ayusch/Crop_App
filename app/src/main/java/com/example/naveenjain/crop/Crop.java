@@ -1,6 +1,7 @@
 package com.example.naveenjain.crop;
 
 import android.annotation.TargetApi;
+import android.app.WallpaperManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -25,8 +26,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
+import java.io.IOException;
 
 public class Crop extends AppCompatActivity implements View.OnClickListener {
     MyImage imageView;
@@ -38,14 +41,6 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
     ImageView leftImageView;
     ImageView rightImageView;
     Drawable borderDrawable;
-    final int leftImageViewId,rightImageViewId,sendButtonId,setButtonId;
-
-    public Crop(int leftImageViewId, int rightImageViewId, int sendButtonId, int setButtonId) {
-        this.leftImageViewId = leftImageViewId;
-        this.rightImageViewId = rightImageViewId;
-        this.sendButtonId = sendButtonId;
-        this.setButtonId = setButtonId;
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,7 +76,7 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         borderDrawable = ContextCompat.getDrawable(this, R.drawable.border_style);
         /*Setting layout properties*/
 
-        rightImageView.setBackground(borderDrawable);
+
 
         Bitmap sourceBitmap = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
         float[] coordinates = getBitmapCoordinates(sourceBitmap); // coordinates of imageview mapped according to coordinates of actual bitmap(image)
@@ -139,8 +134,44 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
     }
 
 
+    @Override
+    public void onClick(View v) {
+        WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+        boolean isSelected=false;
+        if(v.getId()==leftImageView.getId()){
+                leftImageView.setBackground(borderDrawable);
+                leftImageView.setSelected(true);
+                rightImageView.setBackground(null);
+                rightImageView.setSelected(false);
+        }else if(v.getId()==rightImageView.getId()){
+            leftImageView.setBackground(null);
+            leftImageView.setSelected(false);
+            rightImageView.setBackground(borderDrawable);
+            rightImageView.setSelected(true);
+        }else if(v.getId()==setButton.getId()){
+            if (leftImageView.isSelected()) {
+                try {
+                    wallpaperManager.setBitmap(((BitmapDrawable) leftImageView.getDrawable()).getBitmap());
+                    Toast.makeText(this,"Wallpaper Set Successfully !!",Toast.LENGTH_SHORT).show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }else if (rightImageView.isSelected()){
+                try {
+                    wallpaperManager.setBitmap(((BitmapDrawable) rightImageView.getDrawable()).getBitmap());
+                    Toast.makeText(this,"Wallpaper Set Successfully !!",Toast.LENGTH_SHORT).show();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (!leftImageView.isSelected() || !rightImageView.isSelected())
+                Toast.makeText(this,"Please Select an Image ",Toast.LENGTH_SHORT).show();
 
 
+        }else if(v.getId()==sendButton.getId()){
+
+        }
+    }
 
     public float[] getBitmapCoordinates(Bitmap src){
         Matrix inverse = new Matrix();
