@@ -1,32 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/crop_parent_layout"
-
+    android:orientation="vertical"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context="com.example.naveenjain.crop.Crop"
     tools:showIn="@layout/activity_crop"
-
-    android:background="#ea9f4f">
-
-    <com.example.naveenjain.crop.MyImage
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_marginTop="20dp"
-        android:id="@+id/custom_image_view"
-        android:layout_centerHorizontal="true"
-        />
+    android:background="#333333"
+   >
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:weightSum="2"
-        android:id="@+id/crop_button_layout"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="5dp"
+        android:id="@+id/imageviews_layout"
+        android:orientation="horizontal">
+
+
+    <com.example.naveenjain.crop.MyImage
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/custom_image_view"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/border_style"
+        />
+
+
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/filters_scrollview"
+        android:layout_weight="2"
+        android:visibility="visible"
         >
+
+        <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:id="@+id/filterList"
+        >
+
+      </LinearLayout>
+    </HorizontalScrollView>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:layout_gravity="bottom"
+        android:id="@+id/crop_button_layout"
+        android:gravity="bottom">
 
         <Button
         style="?android:attr/buttonStyleSmall"
@@ -43,4 +74,4 @@
 
     </LinearLayout>
 
-</RelativeLayout>
+</LinearLayout>

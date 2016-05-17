@@ -1,6 +1,7 @@
 package com.example.naveenjain.crop;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -30,7 +31,7 @@ import android.widget.RelativeLayout;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
 
     private String LOG_TAG="ayusch";
@@ -48,8 +49,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
         imageView = (MyImage) findViewById(R.id.custom_image_view);
         loadButton= (Button)findViewById(R.id.load_button);
@@ -76,39 +75,22 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         Bitmap bmp = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
+        Uri imageUri=null;
         if(resultCode==RESULT_OK){
             if(requestCode==RESULT_LOAD_IMAGE){
-                if (data.getData()==null){
-                    bmp = (Bitmap)data.getExtras().get("data");
-                }else{
-                    try {
-                        bmp = MediaStore.Images.Media.getBitmap(this.getContentResolver(),data.getData());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+                imageUri = data.getData();
+
             }else if(requestCode==REQUEST_CAMERA_CAPTURE){
                 Bundle extras = data.getExtras();
-                bmp = (Bitmap)extras.get("data");
+                imageUri=data.getData();
             }
         }
-        Log.i(LOG_TAG,"This is the bitmap in mainActivity :"+bmp);
-
-            bmp = scaleDownBitmap(bmp,150,this);
-
-/*        ByteArrayOutputStream ostream = new ByteArrayOutputStream();
-        bmp.compress(Bitmap.CompressFormat.PNG,100,ostream);
-        byte[] bytes = ostream.toByteArray();*/
-
+        Log.i(LOG_TAG,"This is the uri in mainActivity :"+imageUri);
 
             Intent i = new Intent(MainActivity.this,Crop.class);
-
-            i.putExtra("bitmap",bmp);
+            i.putExtra("imageUri",imageUri);
             startActivity(i);
-
-
     }
-
     public static Bitmap scaleDownBitmap(Bitmap photo,int newHeight,Context context){
         final float densityMultiplier = context.getResources().getDisplayMetrics().density;
 
