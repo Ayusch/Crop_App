@@ -69,19 +69,18 @@ public class MainActivity extends Activity {
         startActivityForResult(i,REQUEST_CAMERA_CAPTURE);
     }
 
-    @TargetApi(Build.VERSION_CODES.M)
-    @Override
+      @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        Bitmap bmp = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
         Uri imageUri=null;
-        if(resultCode==RESULT_OK){
+
+          if(resultCode==RESULT_OK){
             if(requestCode==RESULT_LOAD_IMAGE){
+
                 imageUri = data.getData();
 
             }else if(requestCode==REQUEST_CAMERA_CAPTURE){
-                Bundle extras = data.getExtras();
                 imageUri=data.getData();
             }
         }
@@ -89,8 +88,9 @@ public class MainActivity extends Activity {
 
             Intent i = new Intent(MainActivity.this,Crop.class);
             i.putExtra("imageUri",imageUri);
-            startActivity(i);
+          startActivity(i);
     }
+
     public static Bitmap scaleDownBitmap(Bitmap photo,int newHeight,Context context){
         final float densityMultiplier = context.getResources().getDisplayMetrics().density;
 
@@ -100,7 +100,5 @@ public class MainActivity extends Activity {
         photo = Bitmap.createScaledBitmap(photo,w,h,true);
         return photo;
     }
-
-
 
 }

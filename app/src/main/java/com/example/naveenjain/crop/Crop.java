@@ -14,8 +14,11 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
@@ -39,23 +42,26 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 
+import cn.Ragnarok.BitmapFilter;
+
 import static android.provider.MediaStore.Images.Media.getBitmap;
 
+@SuppressWarnings("ResourceType")
 public class Crop extends AppCompatActivity implements View.OnClickListener {
     MyImage imageView;
+    FilterImageThumbnails thumbnail;
     private String LOG_TAG = "ayusch";
     Bitmap bitmap;
-    LinearLayout mainLayout;
-    LinearLayout cropButtonLayout;
+    LinearLayout mainLayout,cropButtonLayout;
     Button cropButton,setButton,sendButton;
-    ImageView leftImageView;
-    ImageView rightImageView;
-    Drawable borderDrawable;
-    private View.OnClickListener filterClickListener;
+    ImageView leftImageView,rightImageView;
+    String[] effectsNames;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,29 +70,25 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        cropButton = (Button)findViewById(R.id.crop_button);
-        cropButtonLayout = (LinearLayout)findViewById(R.id.crop_button_layout) ;
-        imageView = (MyImage)findViewById(R.id.custom_image_view);
-        mainLayout = (LinearLayout)findViewById(R.id.crop_parent_layout);
+        imageView           = (MyImage)findViewById(R.id.custom_image_view);
+        Uri imgUri          = getIntent().getParcelableExtra("imageUri");
 
-        sendButton = new Button(this);
-        setButton = new Button(this);
-
-        Uri imgUri = getIntent().getParcelableExtra("imageUri");
-
-        Bitmap bitmap = null;
         try {
-            bitmap = getBitmap(getContentResolver(),imgUri);
+            bitmap          = getBitmap(getContentResolver(),imgUri);
+            bitmap          = scaleDownBitmap(bitmap,300,this);
         } catch (IOException e) {
             e.printStackTrace();
             Log.i(LOG_TAG,""+e);
         }
-        try {
-            bitmap=rotateBitmap(bitmap);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        imageView.setImageBitmap(bitmap);
+
+       Glide.with(this).load(imgUri).into(imageView);
+
+        cropButton          = (Button)findViewById(R.id.crop_button);
+        cropButtonLayout    = (LinearLayout)findViewById(R.id.crop_button_layout) ;
+        mainLayout          = (LinearLayout)findViewById(R.id.crop_parent_layout);
+        effectsNames        = getResources().getStringArray(R.array.effects);
+        sendButton          = new Button(this);
+        setButton           = new Button(this);
 
     filterImageViews();
 
@@ -100,7 +102,6 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         leftImageView = new ImageView(this);
         rightImageView = new ImageView(this);
 
-        borderDrawable = ContextCompat.getDrawable(this, R.drawable.border_style);
         /*Setting layout properties*/
 
         Bitmap sourceBitmap = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
@@ -118,38 +119,48 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         }else {
             leftBitmap = Bitmap.createBitmap(sourceBitmap,0,0,(int)coordinates[0],sourceBitmap.getHeight());
             rightBitmap = Bitmap.createBitmap(sourceBitmap,(int)coordinates[0],0,(int)(sourceBitmap.getWidth()-coordinates[0]),sourceBitmap.getHeight());
-
         }
+        sourceBitmap.recycle();
 
 
-        /* Child LinearLayout to hold two imageViews */
+        /*  LinearLayout to hold two imageViews */
         LinearLayout imageViewsLayout  = (LinearLayout)findViewById(R.id.imageviews_layout);
 
-        //LinearLayout.LayoutParams linearLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, pxHeight,2.0f);
-        LinearLayout.LayoutParams setButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
-        LinearLayout.LayoutParams sendButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
-
+        // LAYOUT PARAMS FOR TWO CROPPED IMAGE VIEWS
         LinearLayout.LayoutParams layoutParamsLeft = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
         LinearLayout.LayoutParams layoutParamsRight = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
 
+        // LAYOUT PARAMS FOR SET AND SEND BUTTONS
+        LinearLayout.LayoutParams setButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
+        LinearLayout.LayoutParams sendButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
+
+
+        // LEFT IMAGE VIEW
         leftImageView.setImageBitmap(leftBitmap);
+        leftImageView.setId(View.generateViewId());
+        leftImageView.setOnClickListener(this);
+
+        // RIGHT IMAGE VIEW
         rightImageView.setImageBitmap(rightBitmap);
+        rightImageView.setId(View.generateViewId());
+        rightImageView.setOnClickListener(this);
 
-        //imageViewsLayout.setLayoutParams(linearLayoutParams);
 
-        /* Buttons to be set below two imageViews in android */
-
+        //SET BUTTON
         setButton.setText("Set Wallpaper");
         setButton.setBackgroundColor(Color.RED);
-
         setButton.setLayoutParams(setButtonLayoutParams);
+        setButton.setId(View.generateViewId());
+        setButton.setOnClickListener(this);
 
+        // SEND BUTTON
         sendButton.setText("Send");
         sendButton.setBackgroundColor(Color.RED);
-
         sendButton.setLayoutParams(sendButtonLayoutParams);
+        sendButton.setId(View.generateViewId());
+        sendButton.setOnClickListener(this);
 
-        /* Adding the cropped imageviews to new layout */
+        // Adding the cropped imageviews to new layout
         if (leftBitmap==null){
             imageViewsLayout.addView(rightImageView,layoutParamsRight);
         }else if (rightBitmap==null){
@@ -162,21 +173,12 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         /* Setting imageview properties*/
         layoutParamsLeft.setMargins(0,0,20,0);
 
-        /* Setting the ids */
-        leftImageView.setId(View.generateViewId());
-        rightImageView.setId(View.generateViewId());
-        sendButton.setId(View.generateViewId());
-        setButton.setId(View.generateViewId());
-
         imageViewsLayout.removeView(imageView);
+
+        // CROP BUTTON
         cropButtonLayout.removeView(cropButton);
         cropButtonLayout.addView(setButton);
         cropButtonLayout.addView(sendButton);
-
-        leftImageView.setOnClickListener(this);
-        rightImageView.setOnClickListener(this);
-        sendButton.setOnClickListener(this);
-        setButton.setOnClickListener(this);
 
         // to remove filters scroll view
         HorizontalScrollView hsv = (HorizontalScrollView)findViewById(R.id.filters_scrollview);
@@ -187,17 +189,20 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+        Drawable borderDrawable = ContextCompat.getDrawable(this, R.drawable.border_style);
 
         if(v.getId()==leftImageView.getId()){
+
                 leftImageView.setBackground(borderDrawable);
                 leftImageView.setSelected(true);
                 rightImageView.setBackground(null);
                 rightImageView.setSelected(false);
         }else if(v.getId()==rightImageView.getId()){
-            leftImageView.setBackground(null);
-            leftImageView.setSelected(false);
-            rightImageView.setBackground(borderDrawable);
-            rightImageView.setSelected(true);
+
+                leftImageView.setBackground(null);
+                leftImageView.setSelected(false);
+                rightImageView.setBackground(borderDrawable);
+                rightImageView.setSelected(true);
         }else if(v.getId()==setButton.getId()){
             if (leftImageView.isSelected()) {
                 try {
@@ -235,38 +240,43 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
             startActivity(Intent.createChooser(shareIntent, "Send Via"));
 
         }
-    }
 
-    private void filterImageViews(){
-        LinearLayout filterImageLayout = (LinearLayout)findViewById(R.id.filterList);
-        LinearLayout imgLayout=null;
-        LinearLayout.LayoutParams imgLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-
-        for(int i = 0;i<5;i++){
-            ImageView imgView = new ImageView(this);
-            Bitmap bmp = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
-            bmp = scaleDownBitmap(bmp,80,this);
-            imgView.setImageBitmap(bmp);
-            imgView.setId(i);
-            imgView.setAdjustViewBounds(true);
-            imgView.setOnClickListener(imgClick);
-            imgLayout = new LinearLayout(this);
-            imgLayoutParams.setMargins(5,0,0,0);
-            imgLayout.setLayoutParams(imgLayoutParams);
-            imgLayout.addView(imgView);
-
-            filterImageLayout.addView(imgLayout);
-        }
 
     }
+
 
  View.OnClickListener imgClick = new View.OnClickListener() {
      @Override
      public void onClick(View v) {
-        Toast.makeText(getApplicationContext()," "+v.getId(),Toast.LENGTH_SHORT).show();
+         Toast.makeText(getApplicationContext(),effectsNames[v.getId()],Toast.LENGTH_SHORT).show();
+         new MainImageTask().execute(v);
+         /*Context c = v.getContext();
+         switch (v.getId()){
+             case 0  :Glide.with(c);break;
+             case 1  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GRAY_STYLE))).into(imageView);break;
+             case 2  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.RELIEF_STYLE))).into(imageView);break;
+             case 3  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.AVERAGE_BLUR_STYLE))).into(imageView);break;
+             case 4  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.OIL_STYLE))).into(imageView);break;
+             case 5  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.NEON_STYLE))).into(imageView);break;
+             case 6  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.PIXELATE_STYLE))).into(imageView);break;
+             case 7  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.TV_STYLE))).into(imageView);break;
+             case 8  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.INVERT_STYLE))).into(imageView);break;
+             case 9  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.BLOCK_STYLE))).into(imageView);break;
+             case 10 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.OLD_STYLE))).into(imageView);break;
+             case 11 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SHARPEN_STYLE))).into(imageView);break;
+             case 12 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.LIGHT_STYLE,bitmap.getWidth()/3,bitmap.getHeight()/2,bitmap.getWidth()/2))).into(imageView);break;
+             case 13 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.LOMO_STYLE,(bitmap.getWidth() / 2.0) * 95 / 100.0))).into(imageView);break;
+             case 14 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.HDR_STYLE))).into(imageView);break;
+             case 15 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GAUSSIAN_BLUR_STYLE,1.2))).into(imageView);break;
+             case 16 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SOFT_GLOW_STYLE,0.6))).into(imageView);break;
+             case 17 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SKETCH_STYLE))).into(imageView);break;
+             case 18 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.MOTION_BLUR_STYLE,10,1))).into(imageView);break;
+             case 19 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GOTHAM_STYLE))).into(imageView);break;
+
+         }*/
+
      }
  };
-
 
 
     private Uri getImageUri(Context inContext, Bitmap inImage) {
@@ -286,6 +296,7 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         imageView.getImageMatrix().invert(inverse);
         float[] pts = {imageView.touchX,imageView.touchY};
         inverse.mapPoints(pts);
+
         return pts;
     }
 
@@ -313,6 +324,7 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         catch (Exception e) {
 
         }
+
         return myBitmap;
     }
 
@@ -341,6 +353,94 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         photo = Bitmap.createScaledBitmap(photo,w,h,true);
 
         return photo;
+    }
+
+
+    private void filterImageViews(){
+
+        LinearLayout filterImageLayout = (LinearLayout)findViewById(R.id.filterList);
+        LinearLayout imgLayout=null;
+        LinearLayout.LayoutParams imgLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup .LayoutParams.MATCH_PARENT);
+
+     //   Bitmap bmp  = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
+         Bitmap bmp = bitmap;
+        bmp = scaleDownBitmap(bmp,80,this);
+        for(int i = 0;i<effectsNames.length;i++){
+            thumbnail= new FilterImageThumbnails(getApplicationContext(),effectsNames[i]);
+
+         //   Glide.with(this).load(getImageUri(this,BitmapFilter.changeStyle(bmp,i))).into(thumbnail);
+            thumbnail.setImageBitmap(BitmapFilter.changeStyle(bmp,i));
+            thumbnail.setId(i);
+            thumbnail.setOnClickListener(imgClick);
+            imgLayout = new LinearLayout(this);
+
+            imgLayoutParams.setMargins(5,0,0,0);
+            imgLayout.setLayoutParams(imgLayoutParams);
+            imgLayout.addView(thumbnail);
+
+            filterImageLayout.addView(imgLayout);
+        }
+
+
+    }
+    private static Bitmap resize (Bitmap image,int maxWidth,int maxHeight){
+        if(maxHeight>0&&maxWidth>0){
+            int width = image.getWidth();
+            int height = image.getHeight();
+            float rationBitmap = (float)width/(float)height;
+            float rationMax = (float)maxWidth/(float)maxHeight;
+
+            int finalWidth = maxWidth;
+            int finalHeight = maxHeight;
+
+            if(rationMax>1){
+                finalWidth =  (int)((float)maxHeight*rationBitmap);
+            }else {
+                finalHeight= (int)((float)maxWidth/rationBitmap);
+            }
+            image = Bitmap.createScaledBitmap(image,finalWidth,finalHeight,true);
+            return image;
+        }else {
+            return image;
+        }
+    }
+
+    private class MainImageTask extends AsyncTask<View,int[],Bitmap>{
+
+        @Override
+        protected Bitmap doInBackground(View...v) {
+
+            switch (v[0].getId()){
+                case 0  :return bitmap;
+                case 1  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GRAY_STYLE);
+                case 2  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.RELIEF_STYLE);
+                case 3  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.AVERAGE_BLUR_STYLE,5);
+                case 4  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.OIL_STYLE);
+                case 5  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.NEON_STYLE,200,100,50);
+                case 6  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.PIXELATE_STYLE,10);
+                case 7  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.TV_STYLE);
+                case 8  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.INVERT_STYLE);
+                case 9  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.BLOCK_STYLE);
+                case 10 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.OLD_STYLE,5);
+                case 11 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SHARPEN_STYLE);
+                case 12 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.LIGHT_STYLE,bitmap.getWidth()/3,bitmap.getHeight()/2,bitmap.getWidth()/2);
+                case 13 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.LOMO_STYLE,(bitmap.getWidth() / 2.0) * 95 / 100.0);
+                case 14 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.HDR_STYLE);
+                case 15 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GAUSSIAN_BLUR_STYLE,1.2);
+                case 16 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SOFT_GLOW_STYLE,0.6);
+                case 17 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SKETCH_STYLE);
+                case 18 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.MOTION_BLUR_STYLE,10,1);
+                case 19 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GOTHAM_STYLE);
+
+            }
+            return bitmap;
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            super.onPostExecute(bitmap);
+            Glide.with(getApplicationContext()).load(getImageUri(getApplicationContext(),bitmap)).into(imageView);
+        }
     }
 
 }

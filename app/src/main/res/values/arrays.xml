@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="effects">
+        <item>NONE</item>
+        <item>GRAY</item>
+        <item>RELIEF BLUR</item>
+        <item>AVERAGE BLUR STYLE</item>
+        <item>OIL</item>
+        <item>NEON</item>
+        <item>PIXELATE</item>
+        <item>TV</item>
+        <item>INVERT</item>
+        <item>BLOCK</item>
+        <item>OLD</item>
+        <item>SHARPEN</item>
+        <item>LIGHT</item>
+        <item>LOMO</item>
+        <item>HDR</item>
+        <item>GAUSSIAN BLUR</item>
+        <item>SOFT GLOW</item>
+        <item>SKETCH</item>
+        <item>MOTION BLUR</item>
+        <item>GOTHAM</item>
+    </string-array>
+</resources>
