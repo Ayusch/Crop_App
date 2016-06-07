@@ -31,7 +31,7 @@ import android.widget.RelativeLayout;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
 
     private String LOG_TAG="ayusch";
@@ -49,6 +49,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
         imageView = (MyImage) findViewById(R.id.custom_image_view);
         loadButton= (Button)findViewById(R.id.load_button);

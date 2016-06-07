@@ -31,8 +31,10 @@ import android.support.v7.widget.Toolbar;
 import android.transition.TransitionManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
 import android.widget.Button;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -47,6 +49,7 @@ import com.bumptech.glide.Glide;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import cn.Ragnarok.BitmapFilter;
 
@@ -54,14 +57,17 @@ import static android.provider.MediaStore.Images.Media.getBitmap;
 
 @SuppressWarnings("ResourceType")
 public class Crop extends AppCompatActivity implements View.OnClickListener {
-    MyImage imageView;
-    FilterImageThumbnails thumbnail;
-    private String LOG_TAG = "ayusch";
-    Bitmap bitmap;
-    LinearLayout mainLayout,cropButtonLayout;
-    Button cropButton,setButton,sendButton;
-    ImageView leftImageView,rightImageView;
-    String[] effectsNames;
+    public  static MyImage imageView;
+    public  static FilterImageThumbnails thumbnail;
+    private static String LOG_TAG = "ayusch";
+    public  static Bitmap bitmap;
+    public  static LinearLayout  mainLayout,cropButtonLayout,imageViewsLayout;
+    public  static Button cropButton,setButton,sendButton,rotateButton;
+                   ImageView leftImageView,rightImageView;
+    String[]      effectsNames;
+
+    static int TARGET_WIDTH=0,TARGET_HEIGHT=0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,17 +77,20 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         setSupportActionBar(toolbar);
 
         imageView           = (MyImage)findViewById(R.id.custom_image_view);
+        TARGET_HEIGHT       =imageView.getHeight();
+        TARGET_WIDTH        =imageView.getWidth();
         Uri imgUri          = getIntent().getParcelableExtra("imageUri");
 
         try {
             bitmap          = getBitmap(getContentResolver(),imgUri);
             bitmap          = scaleDownBitmap(bitmap,300,this);
+          //scale();
         } catch (IOException e) {
             e.printStackTrace();
             Log.i(LOG_TAG,""+e);
         }
-
-       Glide.with(this).load(imgUri).into(imageView);
+       // imageView.setImageBitmap(bitmap);
+        Glide.with(this).load(getImageUri(getApplicationContext(),bitmap)).asBitmap().into(imageView);
 
         cropButton          = (Button)findViewById(R.id.crop_button);
         cropButtonLayout    = (LinearLayout)findViewById(R.id.crop_button_layout) ;
@@ -89,9 +98,48 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         effectsNames        = getResources().getStringArray(R.array.effects);
         sendButton          = new Button(this);
         setButton           = new Button(this);
+        rotateButton        = (Button)findViewById(R.id.rotate_button);
+        rotateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Bitmap temp =  ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+                imageView.setImageBitmap(RotateBitmap(temp,90));
+                temp.recycle();
+            }
+        });
 
     filterImageViews();
+}
 
+
+    public class BitmapWorker extends AsyncTask<byte[],Void,Bitmap>{
+
+        @Override
+        protected Bitmap doInBackground(byte[]... params) {
+            return decodeBitmapFromByteArray(params[0]);
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap ) {
+            super.onPostExecute(bitmap);
+            imageView.setImageBitmap(bitmap);
+        }
+    }
+
+
+    public void scale(){
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG,100,stream);
+        byte[] byteArray;
+        byteArray = stream.toByteArray();
+
+        try{
+            stream.close();
+        }catch (Exception e ){
+            e.printStackTrace();
+        }
+
+       new BitmapWorker().execute(byteArray);
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -104,44 +152,50 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
 
         /*Setting layout properties*/
 
+
         Bitmap sourceBitmap = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
         float[] coordinates = getBitmapCoordinates(sourceBitmap); // coordinates of imageview mapped according to coordinates of actual bitmap(image)
 
         Bitmap leftBitmap,rightBitmap;
-        if (coordinates[0]<0){
-             leftBitmap = null;
+        if (coordinates[0]<=0){
+             leftBitmap  = null;
              rightBitmap = Bitmap.createBitmap(sourceBitmap,0,0,sourceBitmap.getWidth(),sourceBitmap.getHeight());
 
-        }else if (coordinates[0]>sourceBitmap.getWidth()){
-            leftBitmap = Bitmap.createBitmap(sourceBitmap,0,0,sourceBitmap.getWidth(),sourceBitmap.getHeight());
+        }else if (coordinates[0]>=sourceBitmap.getWidth()){
+            leftBitmap  = Bitmap.createBitmap(sourceBitmap,0,0,sourceBitmap.getWidth(),sourceBitmap.getHeight());
             rightBitmap = null;
 
         }else {
-            leftBitmap = Bitmap.createBitmap(sourceBitmap,0,0,(int)coordinates[0],sourceBitmap.getHeight());
+            leftBitmap  = Bitmap.createBitmap(sourceBitmap,0,0,(int)coordinates[0],sourceBitmap.getHeight());
             rightBitmap = Bitmap.createBitmap(sourceBitmap,(int)coordinates[0],0,(int)(sourceBitmap.getWidth()-coordinates[0]),sourceBitmap.getHeight());
         }
-        sourceBitmap.recycle();
+
 
 
         /*  LinearLayout to hold two imageViews */
-        LinearLayout imageViewsLayout  = (LinearLayout)findViewById(R.id.imageviews_layout);
+
+        imageViewsLayout = (LinearLayout)findViewById(R.id.imageviews_layout);
 
         // LAYOUT PARAMS FOR TWO CROPPED IMAGE VIEWS
-        LinearLayout.LayoutParams layoutParamsLeft = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
+        LinearLayout.LayoutParams layoutParamsLeft  = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
         LinearLayout.LayoutParams layoutParamsRight = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
 
         // LAYOUT PARAMS FOR SET AND SEND BUTTONS
-        LinearLayout.LayoutParams setButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
+        LinearLayout.LayoutParams setButtonLayoutParams  = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
         LinearLayout.LayoutParams sendButtonLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,1.0f);
 
 
         // LEFT IMAGE VIEW
-        leftImageView.setImageBitmap(leftBitmap);
+        if(leftBitmap!=null)
+        Glide.with(this).load(getImageUri(this,leftBitmap)).asBitmap().fitCenter().into(leftImageView);
+        //leftImageView.setImageBitmap(leftBitmap);
         leftImageView.setId(View.generateViewId());
         leftImageView.setOnClickListener(this);
 
         // RIGHT IMAGE VIEW
-        rightImageView.setImageBitmap(rightBitmap);
+        if(rightBitmap!=null)
+        Glide.with(this).load(getImageUri(this,rightBitmap)).asBitmap().fitCenter().into(rightImageView);
+        //rightImageView.setImageBitmap(rightBitmap);
         rightImageView.setId(View.generateViewId());
         rightImageView.setOnClickListener(this);
 
@@ -177,6 +231,7 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
 
         // CROP BUTTON
         cropButtonLayout.removeView(cropButton);
+        cropButtonLayout.removeView(rotateButton);
         cropButtonLayout.addView(setButton);
         cropButtonLayout.addView(sendButton);
 
@@ -241,40 +296,36 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
 
         }
 
-
     }
 
 
  View.OnClickListener imgClick = new View.OnClickListener() {
      @Override
      public void onClick(View v) {
-         Toast.makeText(getApplicationContext(),effectsNames[v.getId()],Toast.LENGTH_SHORT).show();
-         new MainImageTask().execute(v);
-         /*Context c = v.getContext();
-         switch (v.getId()){
-             case 0  :Glide.with(c);break;
-             case 1  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GRAY_STYLE))).into(imageView);break;
-             case 2  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.RELIEF_STYLE))).into(imageView);break;
-             case 3  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.AVERAGE_BLUR_STYLE))).into(imageView);break;
-             case 4  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.OIL_STYLE))).into(imageView);break;
-             case 5  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.NEON_STYLE))).into(imageView);break;
-             case 6  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.PIXELATE_STYLE))).into(imageView);break;
-             case 7  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.TV_STYLE))).into(imageView);break;
-             case 8  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.INVERT_STYLE))).into(imageView);break;
-             case 9  :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.BLOCK_STYLE))).into(imageView);break;
-             case 10 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.OLD_STYLE))).into(imageView);break;
-             case 11 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SHARPEN_STYLE))).into(imageView);break;
-             case 12 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.LIGHT_STYLE,bitmap.getWidth()/3,bitmap.getHeight()/2,bitmap.getWidth()/2))).into(imageView);break;
-             case 13 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.LOMO_STYLE,(bitmap.getWidth() / 2.0) * 95 / 100.0))).into(imageView);break;
-             case 14 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.HDR_STYLE))).into(imageView);break;
-             case 15 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GAUSSIAN_BLUR_STYLE,1.2))).into(imageView);break;
-             case 16 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SOFT_GLOW_STYLE,0.6))).into(imageView);break;
-             case 17 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.SKETCH_STYLE))).into(imageView);break;
-             case 18 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.MOTION_BLUR_STYLE,10,1))).into(imageView);break;
-             case 19 :Glide.with(c).load(getImageUri(c,BitmapFilter.changeStyle(bitmap,BitmapFilter.GOTHAM_STYLE))).into(imageView);break;
-
-         }*/
-
+         if(v.getId()==BitmapFilter.HDR_STYLE){
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         }else if(v.getId()==BitmapFilter.OIL_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.NEON_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.OLD_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.LOMO_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.MOTION_BLUR_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.GOTHAM_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.TV_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.BLOCK_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else if(v.getId()==BitmapFilter.SKETCH_STYLE)
+             Toast.makeText(getApplicationContext(),"Premium filter only ...",Toast.LENGTH_LONG).show();
+         else{
+            Toast.makeText(getApplicationContext(),"Applying Filter ...",Toast.LENGTH_SHORT).show();
+            new MainImageTask().execute(v);
+         }
      }
  };
 
@@ -328,6 +379,39 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         return myBitmap;
     }
 
+    public static Bitmap RotateBitmap(Bitmap source, float angle){
+        Log.i(LOG_TAG,"Rotating Bitmap");
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        return Bitmap.createBitmap(source,0,0,source.getWidth(),source.getHeight(),matrix,true);
+    }
+
+    private  int calculateInSampleSize(BitmapFactory.Options bmOptions){
+        final int photoWidth = bmOptions.outWidth;
+        final int photoHeight = bmOptions.outHeight;
+        int scaleFactor = 1;
+
+        if(photoWidth>TARGET_WIDTH || photoHeight > TARGET_HEIGHT){
+            final int halfPhotoWidth = photoWidth/2;
+            final int halfPhotoHeight = photoHeight/2;
+            while(halfPhotoWidth/scaleFactor > TARGET_WIDTH && halfPhotoHeight > TARGET_HEIGHT){
+                scaleFactor*=2;
+            }
+        }
+        return scaleFactor;
+    }
+
+    private Bitmap decodeBitmapFromByteArray(byte[] byteArray){
+
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds=true;
+        BitmapFactory.decodeByteArray(byteArray,0,byteArray.length,bmOptions);
+
+        bmOptions.inSampleSize=calculateInSampleSize(bmOptions);
+        bmOptions.inJustDecodeBounds = false;
+        return BitmapFactory.decodeByteArray(byteArray,0,byteArray.length,bmOptions);
+    }
+
     public String getRealPathFromUri(Context context,Uri contentUri){
         Cursor cursor = null;
         try{
@@ -362,13 +446,12 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         LinearLayout imgLayout=null;
         LinearLayout.LayoutParams imgLayoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup .LayoutParams.MATCH_PARENT);
 
-     //   Bitmap bmp  = BitmapFactory.decodeResource(getResources(),R.drawable.desert);
-         Bitmap bmp = bitmap;
-        bmp = scaleDownBitmap(bmp,80,this);
+        Bitmap bmp = bitmap;
+      bmp = scaleDownBitmap(bmp,80,this);
         for(int i = 0;i<effectsNames.length;i++){
-            thumbnail= new FilterImageThumbnails(getApplicationContext(),effectsNames[i]);
+            thumbnail= new FilterImageThumbnails(getApplicationContext(),effectsNames[i],i);
 
-         //   Glide.with(this).load(getImageUri(this,BitmapFilter.changeStyle(bmp,i))).into(thumbnail);
+          //  Glide.with(this).load(getImageUri(this,BitmapFilter.changeStyle(bmp,i))).into(thumbnail);
             thumbnail.setImageBitmap(BitmapFilter.changeStyle(bmp,i));
             thumbnail.setId(i);
             thumbnail.setOnClickListener(imgClick);
@@ -405,33 +488,53 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         }
     }
 
-    private class MainImageTask extends AsyncTask<View,int[],Bitmap>{
 
+    private  class MainImageTask extends AsyncTask<View,int[],Bitmap>{
+        int styleNo;
         @Override
         protected Bitmap doInBackground(View...v) {
 
             switch (v[0].getId()){
-                case 0  :return bitmap;
-                case 1  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GRAY_STYLE);
-                case 2  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.RELIEF_STYLE);
-                case 3  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.AVERAGE_BLUR_STYLE,5);
-                case 4  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.OIL_STYLE);
-                case 5  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.NEON_STYLE,200,100,50);
-                case 6  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.PIXELATE_STYLE,10);
-                case 7  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.TV_STYLE);
-                case 8  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.INVERT_STYLE);
-                case 9  :return BitmapFilter.changeStyle(bitmap,BitmapFilter.BLOCK_STYLE);
-                case 10 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.OLD_STYLE,5);
-                case 11 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SHARPEN_STYLE);
-                case 12 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.LIGHT_STYLE,bitmap.getWidth()/3,bitmap.getHeight()/2,bitmap.getWidth()/2);
-                case 13 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.LOMO_STYLE,(bitmap.getWidth() / 2.0) * 95 / 100.0);
-                case 14 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.HDR_STYLE);
-                case 15 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GAUSSIAN_BLUR_STYLE,1.2);
-                case 16 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SOFT_GLOW_STYLE,0.6);
-                case 17 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.SKETCH_STYLE);
-                case 18 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.MOTION_BLUR_STYLE,10,1);
-                case 19 :return BitmapFilter.changeStyle(bitmap,BitmapFilter.GOTHAM_STYLE);
-
+                case 0  :styleNo=v[0].getId();
+                    return bitmap;
+                case 1  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.GRAY_STYLE);
+                case 2  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.RELIEF_STYLE);
+                case 3  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.AVERAGE_BLUR_STYLE,5);
+                case 4  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.OIL_STYLE);
+                case 5  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.NEON_STYLE);
+                case 6  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.PIXELATE_STYLE,10);
+                case 7  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.TV_STYLE);
+                case 8  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.INVERT_STYLE);
+                case 9  :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.BLOCK_STYLE);
+                case 10 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.OLD_STYLE,5);
+                case 11 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.SHARPEN_STYLE);
+                case 12 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.LIGHT_STYLE,bitmap.getWidth()/3,bitmap.getHeight()/2,bitmap.getWidth()/2);
+                case 13 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.LOMO_STYLE,(bitmap.getWidth() / 2.0) * 95 / 100.0);
+                case 14 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.HDR_STYLE);
+                case 15 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.GAUSSIAN_BLUR_STYLE,1.2);
+                case 16 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.SOFT_GLOW_STYLE,0.6);
+                case 17 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.SKETCH_STYLE);
+                case 18 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.MOTION_BLUR_STYLE,10,1);
+                case 19 :styleNo=v[0].getId();
+                    return BitmapFilter.changeStyle(bitmap,BitmapFilter.GOTHAM_STYLE);
             }
             return bitmap;
         }
@@ -439,8 +542,47 @@ public class Crop extends AppCompatActivity implements View.OnClickListener {
         @Override
         protected void onPostExecute(Bitmap bitmap) {
             super.onPostExecute(bitmap);
-            Glide.with(getApplicationContext()).load(getImageUri(getApplicationContext(),bitmap)).into(imageView);
+                 Glide.with(getApplicationContext()).load(getImageUri(getApplicationContext(),bitmap)).asBitmap().into(imageView);
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if(keyCode==KeyEvent.KEYCODE_BACK && event.getRepeatCount()==0){
+            event.startTracking();
+            Log.i(LOG_TAG," inside on Key Up  & repeat count is :"+event.getRepeatCount());
+            return true;
+        }
+
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        HorizontalScrollView hsv = (HorizontalScrollView)findViewById(R.id.filters_scrollview);
+        Log.i(LOG_TAG," inside on Key Down");
+        if(keyCode==KeyEvent.KEYCODE_BACK && event.isTracking() && !event.isCanceled()){
+            Log.i(LOG_TAG,"Performing removal and addition of views");
+            Log.i(LOG_TAG,"Repeat count is :"+event.getRepeatCount());
+            if(hsv.getVisibility()==View.VISIBLE) {
+                System.gc();
+                return super.onKeyUp(keyCode, event);
+            }
+
+            imageViewsLayout.addView(imageView);
+            imageViewsLayout.removeView(rightImageView);
+            imageViewsLayout.removeView(leftImageView);
+            // CROP BUTTON
+            cropButtonLayout.addView(cropButton);
+            cropButtonLayout.addView(rotateButton);
+            cropButtonLayout.removeView(setButton);
+            cropButtonLayout.removeView(sendButton);
+
+            hsv.setVisibility(View.VISIBLE);
+            return true;
+        }
+
+        return super.onKeyUp(keyCode, event);
     }
 
 }

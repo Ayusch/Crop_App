@@ -27,11 +27,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:id="@+id/custom_image_view"
-
         />
 
-
-    </LinearLayout>
+</LinearLayout>
 
     <HorizontalScrollView
         android:layout_width="match_parent"
@@ -61,18 +59,30 @@
         android:layout_weight="2"
         android:layout_gravity="bottom"
         android:id="@+id/crop_button_layout"
-        android:gravity="bottom">
+        android:gravity="bottom"
+        android:orientation="horizontal">
 
-    <Button
-        style="?android:attr/buttonStyleSmall"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/crop"
-        android:id="@+id/crop_button"
-        android:layout_marginBottom="0dp"
-        android:background="#f93f40"
-        android:onClick="onCropClicked"
-        android:layout_gravity="bottom" />
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rotate"
+            android:background="#f93f40"
+            android:id="@+id/rotate_button"
+            android:layout_weight="1"
+            android:layout_marginLeft="2dp"/>
+
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/crop"
+            android:id="@+id/crop_button"
+            android:layout_marginBottom="0dp"
+            android:background="#f93f40"
+            android:onClick="onCropClicked"
+            android:layout_gravity="bottom"
+            android:layout_weight="1" />
 
     </LinearLayout>
 
